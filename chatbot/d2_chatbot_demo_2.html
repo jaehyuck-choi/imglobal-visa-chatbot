@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>D-2 체류기간 연장 챗봇 데모</title>
+<style>
+  :root{
+    --bg:#f3f6f6; --surface:#ffffff; --ink:#1c2426; --ink-soft:#5c6b6e;
+    --line:rgba(28,36,38,.12);
+    --accent:#0f7a72; --accent-soft:#dcf1ee; --accent-ink:#0a5850;
+    --bot-bubble:#ffffff; --user-bubble:#0f7a72; --user-bubble-ink:#ffffff;
+    --trace-bg:#12201f; --trace-ink:#a9e8de; --trace-dim:#5c8c85;
+    --good:#1f8f5f; --bad:#c24b3f;
+    --cap-bg:#fff4e0; --cap-border:#d9a441; --cap-ink:#7a5410;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#121716; --surface:#1a2120; --ink:#eaf1ef; --ink-soft:#96a6a3;
+      --line:rgba(234,241,239,.12);
+      --accent:#4fd3c4; --accent-soft:#173330; --accent-ink:#8fe9dd;
+      --bot-bubble:#222b2a; --user-bubble:#1f6e64; --user-bubble-ink:#eafff9;
+      --trace-bg:#0b1413; --trace-ink:#8fe9dd; --trace-dim:#4c6864;
+      --good:#4fd38a; --bad:#e18376;
+      --cap-bg:#2b2314; --cap-border:#9c772f; --cap-ink:#f0c877;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+    padding-block: max(24px, env(safe-area-inset-top,0px)) max(40px, env(safe-area-inset-bottom,0px));
+  }
+  .wrap{ max-width:920px; margin:0 auto; padding-inline:16px; display:flex; flex-direction:column; gap:16px; }
+
+  header{ text-align:center; margin-bottom:4px; }
+  header .eyebrow{ font-size:.75rem; letter-spacing:.06em; color:var(--accent-ink); background:var(--accent-soft); display:inline-block; padding:4px 10px; border-radius:100px; font-weight:600; }
+  header h1{ font-size:1.35rem; margin:10px 0 6px; }
+  header p{ color:var(--ink-soft); font-size:.88rem; margin:0; line-height:1.6; max-width:60ch; margin-inline:auto; }
+
+  .grid{ display:grid; grid-template-columns: 1.3fr 1fr; gap:16px; align-items:start; }
+  @media (max-width:760px){ .grid{ grid-template-columns:1fr; } }
+
+  .panel{ background:var(--surface); border:1px solid var(--line); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; }
+  .panel-head{ padding:12px 16px; border-bottom:1px solid var(--line); font-size:.82rem; font-weight:600; display:flex; align-items:center; gap:8px; }
+  .panel-head .dot{ width:8px; height:8px; border-radius:50%; background:var(--accent); }
+
+  #chat{ padding:16px; display:flex; flex-direction:column; gap:10px; min-height:360px; max-height:560px; overflow-y:auto; }
+  .msg{ max-width:88%; padding:10px 14px; border-radius:14px; font-size:.9rem; line-height:1.6; white-space:pre-wrap; }
+  .msg.bot{ background:var(--bot-bubble); border:1px solid var(--line); align-self:flex-start; border-bottom-left-radius:4px; }
+  .msg.user{ background:var(--user-bubble); color:var(--user-bubble-ink); align-self:flex-end; border-bottom-right-radius:4px; }
+  .msg.summary{ background:var(--accent-soft); border:1px solid var(--accent); color:var(--ink); align-self:stretch; max-width:100%; white-space:normal; }
+  .msg.summary b{ color:var(--accent-ink); }
+
+  .subtype-grid{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .subtype-chip{ font-size:.72rem; text-align:center; line-height:1.4; padding:5px 9px; border-radius:8px; border:1px solid var(--line); color:var(--ink-soft); background:var(--surface); }
+  .subtype-chip.current{ border-color:var(--accent); background:var(--surface); box-shadow:0 0 0 2px var(--accent) inset; color:var(--accent-ink); font-weight:700; }
+
+  .capbox{ background:var(--cap-bg); border:1px solid var(--cap-border); border-radius:10px; padding:10px 12px; margin-top:4px; color:var(--ink); }
+  .capbox b{ color:var(--cap-ink); }
+
+  .doc-item{ margin-bottom:12px; padding-bottom:10px; border-bottom:1px dashed var(--line); }
+  .doc-item:last-child{ border-bottom:none; margin-bottom:0; padding-bottom:0; }
+  .doc-item .ex{ font-size:.82rem; color:var(--ink-soft); margin-top:3px; }
+  .doc-item .ex b{ color:var(--ink); }
+
+  #choices{ padding:10px 16px 16px; display:flex; flex-wrap:wrap; gap:8px; border-top:1px solid var(--line); }
+  #choices button{
+    font-family:inherit; font-size:.86rem; padding:9px 14px; border-radius:100px;
+    border:1px solid var(--accent); background:var(--surface); color:var(--accent-ink);
+    cursor:pointer; transition:background .15s;
+  }
+  #choices button:hover{ background:var(--accent-soft); }
+  #choices .restart{ border-color:var(--line); color:var(--ink-soft); }
+  #choices .addr-input-wrap{ display:flex; gap:6px; align-items:center; flex-basis:100%; }
+  #choices .addr-input-wrap input{
+    flex:1; min-width:0; font-family:inherit; font-size:.86rem; padding:9px 12px;
+    border-radius:100px; border:1px solid var(--line); background:var(--surface); color:var(--ink);
+  }
+  #choices .addr-input-wrap input:focus{ outline:none; border-color:var(--accent); }
+  #choices .addr-input-wrap button{ flex-shrink:0; }
+
+  #trace{ background:var(--trace-bg); color:var(--trace-ink); font-family:ui-monospace,"SF Mono","Consolas",monospace; font-size:.78rem; line-height:1.7; padding:14px 16px; min-height:360px; max-height:560px; overflow-y:auto; }
+  #trace .line{ margin-bottom:6px; }
+  #trace .file{ color:var(--trace-dim); }
+  #trace .ok{ color:var(--good); }
+  #trace .no{ color:var(--bad); }
+  #trace .idle{ color:var(--trace-dim); }
+
+  .filemap{ display:flex; flex-direction:column; gap:8px; padding:14px 16px; border-top:1px solid var(--line); font-size:.78rem; color:var(--ink-soft); }
+  .filemap code{ background:var(--accent-soft); color:var(--accent-ink); padding:1px 6px; border-radius:5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="eyebrow">작동 원리 데모 · 실제 로직 아님, 학습용 축소판</span>
+    <h1>D-2 체류기간 연장 챗봇이 이렇게 작동합니다</h1>
+    <p>비자 종류와 주소는 로그인할 때 이미 저장돼 있다고 가정하고, 매 학기 바뀔 수 있는 것만 다시 물어봅니다. 버튼을 눌러 답해보세요 — "◀ 이전으로"로 답을 고칠 수도 있어요. 오른쪽 패널에 컴퓨터가 그 순간 JSON의 어느 조건을 확인했는지 그대로 보여드립니다.</p>
+  </header>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-head"><span class="dot"></span>사용자 화면 (챗봇)</div>
+      <div id="chat"></div>
+      <div id="choices"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head" style="background:var(--trace-bg); color:var(--trace-ink); border-color:transparent;"><span class="dot" style="background:var(--trace-ink);"></span>컴퓨터가 지금 확인한 것 (실행 로그)</div>
+      <div id="trace"><div class="line idle">// 질문에 답하면 여기에 조건 비교 과정이 표시됩니다</div></div>
+      <div class="filemap">
+        <div><code>D2_stay_extension_stage2.json</code> — 조건별 규칙·연장 상한·서류·발급경로</div>
+        <div><code>process_overview_easylaw.json</code> — 신청→심사→허가 절차</div>
+        <div><code>immigration_offices.json</code> — 관할청 54곳 주소·전화(데모에서는 대표 7곳만 사용)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── D2_stay_extension_stage2.json의 핵심 필드를 그대로 옮겨왔습니다 (실제 파일과 구조·문구 동일) ── */
+
+const DOC_VALIDITY = "발급일로부터 3개월 이내(매뉴얼 공통 유의사항 1번 — 별도 유효기간이 없는 모든 국내발급서류에 적용)";
+
+const stage2 = {
+  eligibility_rules: [
+    { id:"cycle_degree", file:"stage2.json",
+      condition:{ visa_subtype:["D-2-1","D-2-2","D-2-3","D-2-4","D-2-7"], note:"학위과정" },
+      cycle:"외국인등록은 다음년도 3월말 또는 9월말로 조정, 변경·연장은 2년 이내에서 3월말 또는 9월말까지 허가",
+      explanation:"쉽게 말하면, 학기가 3월과 9월에 시작하니까 체류기간 만료일도 그 학기가 끝나는 시점인 3월 31일 또는 9월 30일 중 가까운 쪽으로 맞춰진다. 실제 입국일이 언제였는지는 상관없다. 연장을 받을 때도 마찬가지 방식이 적용되는데, 이번엔 한 번에 최대 2년치까지 몰아서 허가해줄 수 있고, 그 2년의 끝나는 날짜 역시 항상 3월말 또는 9월말 중 하나가 되도록 맞춘다.",
+      example:"예시: 2026년 5월 20일에 입국해서 외국인등록을 하면, 등록증 만료일은 다음 학기말인 2027년 3월 31일로 잡힌다. 이후 연장 신청을 하면 최대 2년을 한 번에 줄 수 있어 2029년 3월 31일까지 허가받을 수 있다(사안에 따라 1년 단위로만 나올 수도 있음).",
+      asked_in_chatbot:false, chatbot_usage:"직접 묻지 않고 known_at_login의 visa_subtype(로그인 시 이미 아는 값)으로 자동 적용" },
+    { id:"cycle_research", file:"stage2.json",
+      condition:{ visa_subtype:["D-2-5"], note:"연구유학" },
+      max_total_stay:"2년 초과 불가", max_stay_per_grant:"1년",
+      explanation:"연구유학(D-2-5)은 학기말에 맞추는 조정이 없다. 대신 한 번에 최대 1년까지만 체류기간을 주고, 연장을 반복해도 처음 자격을 받은 날로부터 통산 2년을 넘길 수 없다.",
+      example:"예시: 2026년 3월 1일 시작 → 최초 허가는 2027년 2월 28일까지(1년). 연장해도 전체 체류기간이 2028년 2월 29일을 넘을 수 없어, 그 이상은 다른 체류자격으로 바꾸거나 출국해야 한다.",
+      asked_in_chatbot:false, chatbot_usage:"직접 묻지 않고 known_at_login의 visa_subtype(로그인 시 이미 아는 값)으로 자동 적용" },
+    { id:"cycle_exchange", file:"stage2.json",
+      condition:{ visa_subtype:["D-2-6","D-2-8"], note:"교환학생/방문학생" },
+      cycle:"해당 과정 종료일로부터 1개월 범위 내에서 1월말 또는 7월말로 조정하여 허가",
+      explanation:"교환학생·방문학생은 한국 대학에서의 학습 '과정'이 끝나는 날짜가 기준이다. 그 과정 종료일 기준으로 가장 가까운 1월말 또는 7월말(1개월 이내 범위)로 체류기간을 맞춰서 허가해준다.",
+      example:"예시: 교환학기가 6월 20일에 끝나면 종료일로부터 1개월 이내인 7월 31일로 맞춰진다. 12월 10일에 끝나면 다음해 1월 31일로 맞춰진다.",
+      asked_in_chatbot:false, chatbot_usage:"직접 묻지 않고 known_at_login의 visa_subtype(로그인 시 이미 아는 값)으로 자동 적용" },
+    { id:"tier_top", file:"stage2.json",
+      condition:{ institution_tier:["우수인증대학","인증대학"], gpa_min:2.0 },
+      max_stay_per_grant:"1회 2년",
+      documents_waived:["재정입증 서류(단, 고시국가·중점관리국가 국민은 제외 — 이 경우 정상 제출)"],
+      asked_in_chatbot:false, chatbot_usage:"직접 묻지 않고, 일반대학 기준 안내에 '해당하면 서류가 면제될 수 있다'는 참고 문구로만 노출(B안)" },
+    { id:"tier_general", file:"stage2.json",
+      condition:{ institution_tier:["일반대학"], note:"인증대학·비자심사강화대학 명단에 속하지 않는 대학" },
+      max_stay_per_grant:"1회 최대 2년",
+      documents_required_extra:["재정능력 입증서류","체류지 입증서류"],
+      special_case:"베트남 국적 어학연수생은 재정능력 심사기준 특례 적용(일반대학 이하)",
+      asked_in_chatbot:false, chatbot_usage:"질문 없이 모든 사용자에게 보수적 기본값으로 항상 적용(B안) — 최종 요약에서 서류 다음·관할청 연락처 바로 앞에 배치(tierAdviceHtml)" },
+    { id:"tier_weak", file:"stage2.json",
+      condition:{ institution_tier:["비자심사강화대학(舊 하위대학)"], gpa_max:1.0 },
+      max_stay_per_grant:"최초 1회 6개월 이내(사유서 필요)",
+      note:"다음 연장 시에도 평균 D학점 이하면 체류기간 연장 제한",
+      asked_in_chatbot:false, chatbot_usage:"직접 묻지 않음(B안) — 해당 여부는 관할청 확인 안내로 대체" },
+    { id:"night_class", file:"stage2.json",
+      condition:{ class_schedule:"야간 또는 주말 수업 수강" },
+      restriction:"원칙적으로 체류허가 제한. 주간·주중 수업으로 변경 확인되면 허가 가능",
+      exception:"법무부에서 허용한 일부 야간 학위과정 재학생 제외",
+      asked_in_chatbot:true },
+    { id:"leave", file:"stage2.json",
+      condition:{ academic_status:"휴학(개인사정·학점미달)" },
+      restriction:"체류기간 연장 제한",
+      exception:"질병·사고 등 부득이한 사유가 인정되는 경우 예외적으로 체류자격 변경 등 조치",
+      asked_in_chatbot:true },
+  ],
+  hard_caps_by_degree: {
+    "설명":"이건 '한 번에 몇 년 주는지'가 아니라 '연장을 아무리 반복해도 입학일 기준으로 최대 언제까지만 체류를 허용하는지'를 정한 절대 상한이다.",
+    "전문학사": { "기본상한":"입학 후 3년", "예외":"3년제 전문학사는 4년", "example":"2026년 3월 입학 → 기본상한 2029년 2월까지(3년제는 2030년 2월까지)" },
+    "학사":     { "기본상한":"입학 후 6년", "예외":"5년제 학사는 7년",     "example":"2026년 3월 입학 → 기본상한 2032년 2월까지(5년제는 2033년 2월까지)" },
+    "석사":     { "기본상한":"입학 후 5년", "예외":"3년제 석사는 6년",     "example":"2026년 3월 입학 → 기본상한 2031년 2월까지(3년제는 2032년 2월까지)" },
+    "박사":     { "기본상한":"입학 후 8년", "예외":"2년제 박사는 7년",     "example":"2026년 3월 입학 → 기본상한 2034년 2월까지(2년제는 2033년 2월까지)" },
+  },
+  required_documents: [
+    { name:"체류기간 연장허가 신청서(통합신청서)",
+      obtain_type:"government_form",
+      how_to_obtain:"하이코리아(hikorea.go.kr) → 정보광장 → 민원서식/업무매뉴얼 에서 서식 다운로드. 온라인 신청 시에는 하이코리아에서 바로 작성 가능",
+      fallback:"관할 출입국·외국인청 방문 시 현장 비치 서식 사용 가능" },
+    { name:"여권, 외국인등록증",
+      obtain_type:"self_held",
+      how_to_obtain:"본인 보관 서류. 분실·갱신이 필요하면 외국인등록증은 하이코리아 온라인 재발급 신청 또는 관할 출입국·외국인청 방문" },
+    { name:"수수료(체류기간연장허가 6만원)",
+      obtain_type:"online_payment_or_visit",
+      how_to_obtain:"하이코리아 온라인 신청 시 온라인 결제, 방문 신청 시 관할청 창구에서 납부" },
+    { name:"수료증명서, 지도교수 및 유학담당자 확인서",
+      obtain_type:"university_office",
+      how_to_obtain:"소속 대학 국제교류처(또는 유학생지원센터) 방문·이메일 요청. 법무부 지정 서식(지도교수 확인서)에 지도교수·유학담당자 서명 필요",
+      validity: DOC_VALIDITY },
+    { name:"학업을 정상적으로 수행하고 있음을 입증하는 서류",
+      examples:["재학증명서","성적증명서","출석확인서"],
+      obtain_type:"university_portal",
+      how_to_obtain:"재학 중인 대학교 포털 → 증명서 발급(제증명) 메뉴에서 온라인 발급 (대학마다 메뉴 명칭은 다를 수 있음)",
+      note:"학교가 유학생정보시스템에 이미 등록·확인되는 경우 제출 생략 가능 — 담당 출입국청에 사전 확인 권장",
+      validity: DOC_VALIDITY },
+    { name:"재정입증 서류(잔고증명서 등)",
+      obtain_type:"bank",
+      how_to_obtain:"본인 거래은행 앱(모바일뱅킹) 또는 영업점 창구에서 잔고증명서 발급",
+      note:"우수인증대학·인증대학 재학생(성적 C학점 이상, 고시국가/중점관리국가 국민 제외)은 제출 생략 가능",
+      validity: DOC_VALIDITY + " — 신청 임박해서 미리 떼두면 만료돼서 다시 발급받아야 할 수 있으니 주의" },
+    { name:"체류지 입증서류",
+      examples:["임대차계약서","숙소제공 확인서","체류기간 만료예고 통지우편물","공공요금 납부영수증","기숙사비 영수증"],
+      obtain_type:"mixed",
+      how_to_obtain:"예시 서류마다 발급 경로가 다름 — obtain_by_example 참고",
+      obtain_by_example:{
+        "임대차계약서":"본인 보관 서류(계약 시 받은 원본) 확인. 분실 시 임대인 또는 공인중개사에게 사본 요청",
+        "숙소제공 확인서":"기숙사·홈스테이 등 실제 거처를 제공하는 쪽(학교 기숙사 행정실 또는 임대인)에게 요청해 발급",
+        "체류기간 만료예고 통지우편물":"출입국청에서 우편으로 보낸 것을 수령해 보관(별도 발급 절차 없음)",
+        "공공요금 납부영수증":"본인 명의 전기·수도·가스 등 고지서 보관 또는 공급사 홈페이지/앱에서 재발급",
+        "기숙사비 영수증":"학교 기숙사 행정실에서 발급",
+      },
+      validity: DOC_VALIDITY + "(단, 임대차계약서 등 원래 유효기간이 정해진 서류는 그 기간을 따름)" },
+  ],
+};
+
+const processOverview = {
+  file:"process_overview_easylaw.json",
+  steps:["1. 신청 (체류기간 만료 전, 관할 출입국·외국인청)","2. 심사 (여권 유효성, 귀국 인정 여부 등)","3. 허가 (외국인등록증에 기간 기재)"]
+};
+
+/* ── D-2 세부유형 8종 — "D-2-1~4"처럼 묶지 않고 하나씩 표시하기 위한 카탈로그.
+   flowchart(d2_chatbot_flow.html)에서 8개 박스로 나타낸 것과 동일한 개념을 데모에서도
+   그대로 보여줍니다. degreeLevel이 있는 항목만 hard_caps_by_degree와 연결됩니다. */
+const subtypeCatalog = [
+  { code:'D-2-1', label:'전문학사과정', group:'cycle_degree',  degreeLevel:'전문학사' },
+  { code:'D-2-2', label:'학사과정',     group:'cycle_degree',  degreeLevel:'학사' },
+  { code:'D-2-3', label:'석사과정',     group:'cycle_degree',  degreeLevel:'석사' },
+  { code:'D-2-4', label:'박사과정',     group:'cycle_degree',  degreeLevel:'박사' },
+  { code:'D-2-7', label:'연구과정 등',  group:'cycle_degree',  degreeLevel:'박사' },
+  { code:'D-2-5', label:'연구유학',     group:'cycle_research', degreeLevel:null },
+  { code:'D-2-6', label:'교환학생',     group:'cycle_exchange', degreeLevel:null },
+  { code:'D-2-8', label:'방문학생',     group:'cycle_exchange', degreeLevel:null },
+];
+function subtypeInfo(code){ return subtypeCatalog.find(s => s.code === code); }
+
+/* 실제 immigration_offices.json(공공데이터포털 15040715) 54곳 전체를 stage2.json과
+   동일하게 그대로 옮겨왔습니다(예전 버전은 7곳만 골라 쓰다가, 그 탓에 "체류지 광역 단위가
+   왜 이렇게 적냐"는 지적을 받았음 — 2026-09-15). */
+const offices = { file:"immigration_offices.json", data:[
+  { 지역:'서울, 인천, 경기', 기관명:'인천공항출입국·외국인청', 관할구역:'인천국제공항', 주소:'인천광역시 중구 공항로 272', 전화:'032-740-7391~2(제1터미널), 032-740-7361~2(제2터미널)' },
+  { 지역:'서울, 인천, 경기', 기관명:'인천공항출입국·외국인청 서울역출장소', 관할구역:'출입국심사전담', 주소:'서울시 용산구 한강대로 405 서울역 지하2층', 전화:'02-362-8432' },
+  { 지역:'서울, 인천, 경기', 기관명:'서울출입국·외국인청', 관할구역:'서울시 관악구, 광진구, 강남구, 강동구, 동작구, 송파구, 성동구, 서초구, 용산구, 경기도 성남시, 하남시, 과천시', 주소:'서울시 양천구 목동동로 151', 전화:'02-2650-6214' },
+  { 지역:'서울, 인천, 경기', 기관명:'서울출입국·외국인청 세종로출장소', 관할구역:'서울시 종로구, 중구, 은평구, 동대문구, 중랑구, 도봉구, 성북구, 강북구, 노원구', 주소:'서울시 종로구 종로38 서울글로벌센터 2, 3층', 전화:'02-731-1799' },
+  { 지역:'서울, 인천, 경기', 기관명:'인천출입국·외국인청', 관할구역:'인천광역시(인천국제공항 제외), 경기도 부천시, 김포시', 주소:'인천광역시 제물포구 서해대로 393', 전화:'032-890-6300' },
+  { 지역:'서울, 인천, 경기', 기관명:'인천출입국·외국인청 김포다문화이주민플러스센터', 관할구역:'경기도 김포시, 인천광역시 강화군', 주소:'경기도 김포시 양촌읍 황금로110번길 52', 전화:'031-981-0042' },
+  { 지역:'서울, 인천, 경기', 기관명:'수원출입국·외국인청', 관할구역:'경기도 의왕시, 수원시, 용인시, 이천시, 화성시, 광주시, 양평군, 여주시', 주소:'경기도 수원시 영통구 반달로 39', 전화:'031-695-3817' },
+  { 지역:'서울, 인천, 경기', 기관명:'수원출입국·외국인청 평택출장소', 관할구역:'경기도 평택시(평택항 제외), 안성시, 오산시, 오산군용비행장', 주소:'경기도 평택시 경기대로 1375 CK타워 3, 4층', 전화:'031-8024-9612' },
+  { 지역:'서울, 인천, 경기', 기관명:'수원출입국·외국인청 평택항만출장소', 관할구역:'평택항', 주소:'경기도 평택시 포승읍 하만호길 155-40', 전화:'031-683-6938' },
+  { 지역:'서울, 인천, 경기', 기관명:'서울남부출입국·외국인사무소', 관할구역:'서울시 서대문구, 마포구, 강서구, 양천구, 영등포구, 구로구, 금천구', 주소:'서울시 강서구 마곡서1로 48', 전화:'02-6980-4812' },
+  { 지역:'서울, 인천, 경기', 기관명:'서울남부출입국·외국인사무소 영등포출입국민원센터', 관할구역:'서울시 서대문구, 마포구, 강서구, 양천구, 영등포구, 구로구, 금천구', 주소:'서울시 영등포구 도신로 40', 전화:'02-3284-6000' },
+  { 지역:'서울, 인천, 경기', 기관명:'안산출입국·외국인사무소', 관할구역:'경기도 안산시, 시흥시, 안양시, 군포시, 광명시', 주소:'경기도 안산시 단원구 광덕4로 88 5층', 전화:'031-364-5700' },
+  { 지역:'서울, 인천, 경기', 기관명:'안산출입국·외국인사무소 종합민원센터', 관할구역:'경기도 안산시, 시흥시, 안양시, 군포시, 광명시', 주소:'경기도 안산시 단원구 광덕4로 96 2층', 전화:'031-364-5719' },
+  { 지역:'서울, 인천, 경기', 기관명:'안산출입국·외국인사무소 안산다문화이주민플러스센터', 관할구역:'경기도 안산시, 시흥시, 안양시, 군포시, 광명시', 주소:'경기도 안산시 부부로 43 안산시외국인주민지원본부 1층', 전화:'031-364-5753' },
+  { 지역:'서울, 인천, 경기', 기관명:'안산출입국·외국인사무소 시흥다문화이주민플러스센터', 관할구역:'경기도 안산시, 시흥시, 안양시, 군포시, 광명시', 주소:'경기도 시흥시 공단1대로259번길 5 시흥시외국인복지센터 2층', 전화:'031-364-5763' },
+  { 지역:'서울, 인천, 경기', 기관명:'양주출입국·외국인사무소', 관할구역:'경기도 의정부시, 동두천시, 구리시, 남양주시, 양주시, 연천군, 포천시, 강원도 철원군', 주소:'경기도 양주시 평화로1475번길 23', 전화:'031-828-9306' },
+  { 지역:'서울, 인천, 경기', 기관명:'양주출입국·외국인사무소 고양출장소', 관할구역:'경기도 고양시, 파주시', 주소:'경기도 고양시 덕양구 화정동 화중로 104번길 50', 전화:'031-936-5018' },
+  { 지역:'서울, 인천, 경기', 기관명:'김포공항출입국·외국인사무소', 관할구역:'김포국제공항', 주소:'서울시 강서구 하늘길 38', 전화:'02-2664-6202' },
+  { 지역:'서울, 인천, 경기', 기관명:'화성외국인보호소', 관할구역:'외국인보호전담', 주소:'경기도 화성시 마도면 화성로 739', 전화:'031-8055-7000' },
+  { 지역:'서울, 인천, 경기', 기관명:'출입국·외국인지원센터', 관할구역:'난민지원', 주소:'인천광역시 영종구 영종해안북로1204번길 123', 전화:'032-745-3300(주간), 032-745-3371(야간, 공휴일)' },
+  { 지역:'부산, 경남', 기관명:'부산출입국·외국인청 본관', 관할구역:'부산광역시(김해국제공항 제외), 경상남도 양산시', 주소:'부산광역시 중구 충장대로 22-1', 전화:'051-461-3016' },
+  { 지역:'부산, 경남', 기관명:'부산출입국·외국인청 별관', 관할구역:'부산광역시(김해국제공항 제외), 경상남도 김해시, 양산시, 밀양시', 주소:'부산광역시 중구 충장대로 7 교보생명 중앙동사옥', 전화:'051-461-3091~6' },
+  { 지역:'부산, 경남', 기관명:'부산출입국·외국인청 김해출장소', 관할구역:'경상남도 김해시, 밀양시', 주소:'경상남도 김해시 가락로 58 부원동우체국 5층', 전화:'055-344-7830~5' },
+  { 지역:'부산, 경남', 기관명:'김해공항출입국·외국인사무소', 관할구역:'김해국제공항', 주소:'부산광역시 강서구 공항진입로 108', 전화:'051-979-1300' },
+  { 지역:'부산, 경남', 기관명:'울산출입국·외국인사무소', 관할구역:'울산광역시, 경상북도 경주시', 주소:'울산광역시 중구 종가로 405-1', 전화:'052-279-8024' },
+  { 지역:'부산, 경남', 기관명:'창원출입국·외국인사무소', 관할구역:'경상남도(김해시, 밀양시, 양산시 제외)', 주소:'경상남도 창원시 마산합포구 제2부두로 30', 전화:'055-981-6000' },
+  { 지역:'부산, 경남', 기관명:'창원출입국·외국인사무소 거제출장소', 관할구역:'경상남도 거제시', 주소:'경상남도 거제시 연초면 연사1길 24', 전화:'055-681-8133' },
+  { 지역:'부산, 경남', 기관명:'창원출입국·외국인사무소 사천출장소', 관할구역:'경상남도 사천시, 남해군, 하동군', 주소:'경상남도 사천시 삼천포대교로 450번지', 전화:'055-835-3988' },
+  { 지역:'부산, 경남', 기관명:'창원출입국·외국인사무소 통영출장소', 관할구역:'경상남도 통영시', 주소:'경상남도 통영시 남망길 5번지', 전화:'055-645-3405' },
+  { 지역:'광주, 전라, 제주', 기관명:'제주출입국·외국인청', 관할구역:'제주특별자치도', 주소:'제주특별자치도 제주시 용담로 3', 전화:'064-741-5400' },
+  { 지역:'광주, 전라, 제주', 기관명:'여수출입국·외국인사무소', 관할구역:'전남광주통합특별시 여수시, 순천시', 주소:'전남광주통합특별시 여수시 무선로 265', 전화:'061-689-5511' },
+  { 지역:'광주, 전라, 제주', 기관명:'여수출입국·외국인사무소 광양출장소', 관할구역:'전남광주통합특별시 광양시', 주소:'전남광주통합특별시 광양시 중동2길 23', 전화:'061-792-1139' },
+  { 지역:'광주, 전라, 제주', 기관명:'여수출입국·외국인사무소 광양다문화이주민플러스센터', 관할구역:'전남광주통합특별시 광양시', 주소:'전남광주통합특별시 광양시 동광2길 9-7 광양시가족센터 3층', 전화:'061-795-8386' },
+  { 지역:'광주, 전라, 제주', 기관명:'광주출입국·외국인사무소', 관할구역:'전남광주통합특별시(목포시, 완도군, 신안군, 무안군, 진도군, 영암군, 해남군, 여수시, 순천시, 광양시 제외)', 주소:'전남광주통합특별시 서구 상무대로911번길 22', 전화:'062-605-5280' },
+  { 지역:'광주, 전라, 제주', 기관명:'광주출입국·외국인사무소 무안공항출장소', 관할구역:'무안국제공항', 주소:'전남광주통합특별시 무안군 망운면 공항로 970-260', 전화:'061-453-8846' },
+  { 지역:'광주, 전라, 제주', 기관명:'광주출입국·외국인사무소 목포출장소', 관할구역:'전남광주통합특별시 목포시, 완도군, 신안군, 무안군, 진도군, 영암군, 해남군', 주소:'전남광주통합특별시 목포시 백년대로412번길 26', 전화:'061-282-7294' },
+  { 지역:'광주, 전라, 제주', 기관명:'전주출입국·외국인사무소', 관할구역:'전북특별자치도(군산시 제외)', 주소:'전북특별자치도 전주시 덕진구 동부대로 857', 전화:'063-249-8693~4' },
+  { 지역:'광주, 전라, 제주', 기관명:'전주출입국·외국인사무소 군산출장소', 관할구역:'전북특별자치도 군산시, 장항항, 군산미공군 비행장', 주소:'전북특별자치도 군산시 대학로 151-1', 전화:'063-440-8400' },
+  { 지역:'대구, 경북, 강원', 기관명:'대구출입국·외국인사무소', 관할구역:'대구광역시, 경상북도(포항시, 울진군, 영덕군, 울릉군, 구미시, 김천시, 상주시, 문경시, 칠곡군 제외)', 주소:'대구광역시 동구 이노밸리로 345', 전화:'053-980-3517' },
+  { 지역:'대구, 경북, 강원', 기관명:'대구출입국·외국인사무소 포항출장소', 관할구역:'경상북도 포항시, 울진군, 영덕군, 울릉군', 주소:'경상북도 포항시 북구 우창동로 13', 전화:'054-247-5363' },
+  { 지역:'대구, 경북, 강원', 기관명:'대구출입국·외국인사무소 구미출장소', 관할구역:'경상북도 구미시, 김천시, 상주시, 문경시, 칠곡군', 주소:'경상북도 구미시 구미대로 350-27 구미시종합비즈니스지원센터 4층', 전화:'054-459-3505' },
+  { 지역:'대구, 경북, 강원', 기관명:'춘천출입국·외국인사무소', 관할구역:'강원특별자치도(동해시, 강릉시, 삼척시, 태백시, 정선군, 속초시, 양양군, 고성군, 철원군 제외), 경기도 가평군', 주소:'강원특별자치도 춘천시 동내면 사암길 12', 전화:'033-269-3210' },
+  { 지역:'대구, 경북, 강원', 기관명:'춘천출입국·외국인사무소 고성출장소', 관할구역:'고성터미널', 주소:'강원특별자치도 고성군 현내면 동해대로 9097', 전화:'033-680-5100' },
+  { 지역:'대구, 경북, 강원', 기관명:'춘천출입국·외국인사무소 동해출장소', 관할구역:'강원특별자치도 동해시, 강릉시, 삼척시, 태백시, 정선군', 주소:'강원특별자치도 동해시 해안로 225', 전화:'033-535-5723' },
+  { 지역:'대구, 경북, 강원', 기관명:'춘천출입국·외국인사무소 속초출장소', 관할구역:'강원특별자치도 속초시, 양양군, 고성군', 주소:'강원특별자치도 속초시 청초호반로 189, 속초법무합동청사', 전화:'033-636-8614' },
+  { 지역:'대전, 충청', 기관명:'대전출입국·외국인사무소', 관할구역:'대전광역시, 충청남도(천안시, 아산시, 서산시, 당진시, 예산군, 태안군, 홍성군, 당진항, 장항항, 보령항 제외), 충청북도 영동군, 옥천군, 세종특별자치시', 주소:'대전광역시 중구 목중로26번길 7', 전화:'042-220-2001~2, 4' },
+  { 지역:'대전, 충청', 기관명:'대전출입국·외국인사무소 천안출장소', 관할구역:'충청남도 천안시, 아산시, 예산군', 주소:'충청남도 천안시 서북구 광장로 215 충남북부상공회의소 403호', 전화:'041-621-1347' },
+  { 지역:'대전, 충청', 기관명:'대전출입국·외국인사무소 천안출장소 아산다문화이주민플러스센터', 관할구역:'충청남도 천안시, 아산시, 예산군', 주소:'충청남도 아산시 아산로 79 유신빌딩 4층', 전화:'041-549-7441' },
+  { 지역:'대전, 충청', 기관명:'대전출입국·외국인사무소 천안출장소 천안다문화이주민플러스센터', 관할구역:'충청남도 천안시, 아산시, 예산군', 주소:'충청남도 천안시 동남구 버들로 40 동남구보건소 별관 8층', 전화:'041-566-1346' },
+  { 지역:'대전, 충청', 기관명:'대전출입국·외국인사무소 서산출장소', 관할구역:'충청남도 서산시, 태안군, 홍성군, 보령항', 주소:'충청남도 서산시 읍내3로 28 서림빌딩 6층', 전화:'041-681-6188' },
+  { 지역:'대전, 충청', 기관명:'대전출입국·외국인사무소 당진출장소', 관할구역:'충청남도 당진시, 당진항', 주소:'충청남도 당진시 송악읍 고대공단2길 79-33 항만지원센터 2층', 전화:'041-352-6174' },
+  { 지역:'대전, 충청', 기관명:'청주출입국·외국인사무소', 관할구역:'충청북도(영동군, 옥천군 제외), 청주국제공항', 주소:'충청북도 청주시 흥덕구 비하로12번길 52', 전화:'043-230-9000' },
+  { 지역:'대전, 충청', 기관명:'청주출입국·외국인사무소 음성다문화이주민플러스센터', 관할구역:'충청북도(영동군, 옥천군 제외)', 주소:'충청북도 음성군 금왕읍 금석로 71 3층', 전화:'043-878-2671' },
+  { 지역:'대전, 충청', 기관명:'청주외국인보호소', 관할구역:'외국인보호전담', 주소:'충청북도 청주시 서원구 청남로1887번길 49', 전화:'043-290-7512' },
+]};
+
+/* ── 시/도(광역자치단체) 선택지 ──
+   ⚠ 주의: 이 16개 목록은 "원본 데이터에 있는 필드를 그대로 뽑아 쓴 것"이 아니라 제가 손으로
+   만든 목록입니다. offices.json(54개 레코드)에는 시/도를 깔끔하게 담은 필드가 없고, '지역' 필드는
+   5개짜리 내부 관리용 클러스터("서울,인천,경기" / "부산,경남" / "광주,전라,제주" / "대구,경북,강원" /
+   "대전,충청")뿐입니다. 그래서 이전 버전은 그 5개를 그대로 사용자에게 보여줬는데, 이건 정부
+   데이터셋이 관리 편의상 묶어놓은 것일 뿐 사용자가 자기 주소를 떠올릴 때 쓰는 단위가 아니라서
+   "카테고리가 왜 이렇게 적냐"는 피드백을 받았습니다(2026-09-15).
+   이 16개는 제가 54개 레코드의 '관할구역'·'주소' 자유서식 텍스트를 하나하나 읽으면서 그 안에 실제로
+   등장하는 시/도 이름(경상남도, 강원특별자치도 등)을 손으로 뽑아 만든 목록입니다 — 즉 데이터에서
+   자동으로 파싱해낸 게 아니라 사람이 직접 정리한 "보조 참조 목록"입니다. 실제 서비스에서는 이렇게
+   수작업으로 만든 목록에 의존하면 안 되고, 회원가입 주소 입력에 쓰는 정식 행정구역 데이터(예: 카카오/
+   다음 우편번호 API, 또는 행정안전부의 법정동 코드 테이블)를 그대로 쓰는 게 맞습니다 — 그러면 시/도가
+   바뀌거나 새로 생겨도(예: 이 데이터에 나온 '전남광주통합특별시'처럼) 별도 유지보수 없이 따라갑니다.
+   여기서는 매칭 로직(office_lookup.py)이 정확히 동작하는지 보여주기 위한 예시 입력값일 뿐입니다.
+   cities가 빈 배열인 항목은 그 시/도를 통째로 담당하는 사무소가 하나(또는 사실상 하나)뿐이라
+   시/군/구까지 더 물어볼 필요가 없는 경우입니다(아래 matchAndShow가 시/도 이름 자체로 매칭). */
+const provinceOptions = [
+  { province:'서울특별시',       cities:['종로구', '강남구'] },
+  { province:'인천광역시',       cities:['강화군'] },
+  { province:'경기도',           cities:['성남시', '부천시', '안산시'] },
+  { province:'부산광역시',       cities:[] },
+  { province:'울산광역시',       cities:[] },
+  { province:'경상남도',         cities:['김해시', '창원시', '거제시'] },
+  { province:'경상북도',         cities:['포항시', '구미시', '경주시'] },
+  { province:'대구광역시',       cities:[] },
+  { province:'강원특별자치도',   cities:['속초시', '춘천시', '철원군'] },
+  { province:'대전광역시',       cities:[] },
+  { province:'세종특별자치시',   cities:[] },
+  { province:'충청남도',         cities:['천안시', '서산시', '당진시'] },
+  { province:'충청북도',         cities:['청주시', '영동군'] },
+  { province:'전남광주통합특별시', cities:['완도군', '여수시', '광양시'] },
+  { province:'전북특별자치도',   cities:['군산시', '전주시'] },
+  { province:'제주특별자치도',   cities:[] },
+];
+
+/* ── 로그인 시점에 이미 알고 있다고 가정하는 회원 정보 ──
+   실제 서비스에서는 "비자 종류"와 "체류지 주소"를 로그인/온보딩 때 이미 받아두므로,
+   챗봇 대화(=만료 임박 알림을 클릭해서 들어온 시점)에서는 이 값을 다시 묻지 않고
+   그대로 사용합니다. 데모에서는 하드코딩하지만, 실제로는 회원 DB에서 조회하는 값입니다. */
+const knownProfile = {
+  subtype: 'D-2-1',
+  address: '경상남도 김해시',
+};
+
+/* ── 챗봇 상태 ── */
+let user = {};
+const chatEl = document.getElementById('chat');
+const choicesEl = document.getElementById('choices');
+const traceEl = document.getElementById('trace');
+
+function say(text, cls='bot'){
+  const d = document.createElement('div');
+  d.className = 'msg ' + cls;
+  d.textContent = text;
+  chatEl.appendChild(d);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+function sayHTML(html){
+  const d = document.createElement('div');
+  d.className = 'msg summary';
+  d.innerHTML = html;
+  chatEl.appendChild(d);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+function trace(html, kind='idle'){
+  const d = document.createElement('div');
+  d.className = 'line ' + kind;
+  d.innerHTML = html;
+  traceEl.appendChild(d);
+  traceEl.scrollTop = traceEl.scrollHeight;
+}
+function clearChoices(){ choicesEl.innerHTML=''; }
+function addChoice(label, fn){
+  const b = document.createElement('button');
+  b.textContent = label;
+  b.onclick = () => { say(label,'user'); clearChoices(); fn(); };
+  choicesEl.appendChild(b);
+}
+/* ── 실제 서비스에서는 시/도가 16~17개, 시/군/구까지 합치면 228개 안팎이라 전부 버튼으로
+   미리 만들어둘 수 없습니다. provinceOptions의 예시 도시 버튼은 데모 인터랙션용일 뿐이고,
+   실제로는 사용자가 문자열을 직접 입력(또는 카카오/다음 우편번호 검색 같은 주소 자동완성
+   위젯에서 선택)해서 "시/도 + 시/군/구" 문자열을 얻고, 그걸 그대로 matchAndShow()에
+   넘기면 됩니다 — 매칭 로직 자체는 이미 임의의 문자열을 처리하도록 짜여 있어서, 이 입력창은
+   기존 로직에 아무것도 새로 추가하지 않고 "버튼 목록에 없는 지역"을 시험해보는 용도입니다. */
+function addAddressInput(placeholder, onSubmit){
+  const wrap = document.createElement('div');
+  wrap.className = 'addr-input-wrap';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = placeholder;
+  const btn = document.createElement('button');
+  btn.textContent = '확인';
+  const submit = () => {
+    const v = input.value.trim();
+    if (!v) return;
+    say(v, 'user');
+    clearChoices();
+    onSubmit(v);
+  };
+  btn.onclick = submit;
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+  wrap.appendChild(input);
+  wrap.appendChild(btn);
+  choicesEl.appendChild(wrap);
+}
+
+function addRestart(){
+  const b = document.createElement('button');
+  b.className = 'restart'; b.textContent = '↺ 처음부터 다시';
+  b.onclick = () => location.reload();
+  choicesEl.appendChild(b);
+}
+
+/* ── 뒤로가기: 질문이 있는 단계에 들어갈 때마다 그 시점의 답변 상태(user)를 스냅샷으로 쌓아두고,
+   "이전으로"를 누르면 직전 단계를 그 스냅샷 상태로 되돌려 다시 렌더링합니다. ── */
+let historyStack = [];
+function pushStep(thunk){
+  historyStack.push({ thunk, snapshot: JSON.parse(JSON.stringify(user)) });
+}
+function goBack(){
+  if (historyStack.length < 2) return;
+  historyStack.pop();               // 지금 보고 있던 단계 제거
+  const prev = historyStack.pop();  // 그 이전 단계 — thunk() 실행 시 스스로 다시 push됨
+  user = prev.snapshot;
+  trace('<span class="file">[뒤로가기]</span> 이전 질문 상태로 되돌립니다. 그 이후에 답했던 내용은 초기화됩니다.', 'idle');
+  prev.thunk();
+}
+function addBack(){
+  if (historyStack.length < 2) return;
+  const b = document.createElement('button');
+  b.className = 'restart'; b.textContent = '◀ 이전으로';
+  b.onclick = () => { clearChoices(); goBack(); };
+  choicesEl.appendChild(b);
+}
+
+function checkCondition(rule){
+  const c = rule.condition;
+  let pass = true, parts = [];
+  if (c.visa_subtype){
+    const ok = c.visa_subtype.includes(user.subtype);
+    parts.push(`visa_subtype 포함? "${user.subtype}" in [${c.visa_subtype.join(',')}] → ${ok}`);
+    pass = pass && ok;
+  }
+  if (c.institution_tier){
+    const arr = Array.isArray(c.institution_tier) ? c.institution_tier : [c.institution_tier];
+    const ok = arr.includes(user.tier);
+    parts.push(`institution_tier 포함? "${user.tier||'-'}" in [${arr.join(',')}] → ${ok}`);
+    pass = pass && ok;
+  }
+  if (c.gpa_min !== undefined){
+    const ok = user.gpa >= c.gpa_min;
+    parts.push(`gpa >= ${c.gpa_min}? 사용자값=${user.gpa} → ${ok}`);
+    pass = pass && ok;
+  }
+  if (c.class_schedule){
+    const ok = user.schedule === c.class_schedule;
+    parts.push(`class_schedule == "${c.class_schedule}"? 사용자값="${user.schedule}" → ${ok}`);
+    pass = pass && ok;
+  }
+  if (c.academic_status){
+    const composed = user.status === '휴학'
+      ? `휴학(${user.leaveReason === '질병·사고' ? '질병·사고' : '개인사정·학점미달'})`
+      : (user.status || '-');
+    const ok = composed === c.academic_status;
+    parts.push(`academic_status == "${c.academic_status}"? 사용자값="${composed}" → ${ok}`);
+    pass = pass && ok;
+  }
+  trace(`<span class="file">[stage2.json → eligibility_rules.${rule.id}]</span><br>` +
+        parts.map(p=>'&nbsp;&nbsp;'+p).join('<br>') +
+        `<br>&nbsp;&nbsp;⇒ ${pass ? '<span class="ok">일치 ✓ 이 규칙 적용됨</span>' : '<span class="no">불일치 ✗ 건너뜀</span>'}`,
+        pass?'ok':'no');
+  return pass;
+}
+
+function start(){
+  /* ⚠ 이 화면은 데모 전용 "조작 패널"입니다. 실제 서비스에서는 사용자가 이 화면을 보지
+     않습니다 — 로그인 정보로 visa_subtype이 이미 채워져 있어서 "어떤 유형이신가요?"라고
+     묻지 않기 때문입니다. 여기서는 "다른 세부유형도 다 되는지" 직접 눌러보며 확인할 수
+     있도록, 8종 중 어떤 회원으로 시뮬레이션할지 먼저 고르게 했습니다. */
+  say('[데모 조작 패널] 어떤 세부유형 회원으로 시뮬레이션해볼까요? (실제 서비스에는 없는 화면 — 로그인 정보로 자동으로 채워지는 값이라 사용자에게 묻지 않습니다)');
+  subtypeCatalog.forEach(s => addChoice(`${s.code} · ${s.label}`, ()=>{ user.subtype = s.code; beginChat(); }));
+}
+
+function beginChat(){
+  /* 여기서부터가 실제 서비스 흐름입니다 — 만료 임박 알림을 클릭해 들어온 시점.
+     연장주기·상한·학교등급 안내 같은 "매 학기 안 바뀌는 참고 정보"는 subtype만 알면 이미
+     다 계산 가능하지만, 처음부터 화면에 전부 쏟아내면 정신없다는 피드백을 받아(2026-09-16)
+     여기서는 계산만 해서 user 객체와 트레이스 로그에 담아두고, 채팅창에는 마지막 요약
+     (showSummary)에서 서류·관할청과 함께 한 번에 정리해서 보여줍니다. 대신 실제로 매
+     학기 달라질 수 있는 질문(야간수업/휴학)부터 바로 시작합니다. */
+  const info = subtypeInfo(user.subtype);
+  say(`[알림] 체류기간 만료가 얼마 남지 않았어요! ${user.subtype}(${info.label}) 비자 연장에 필요한 사항을 바로 안내해드릴게요.`);
+  trace(`<span class="file">[회원 프로필 → 로그인 시 저장된 정보]</span> visa_subtype = "${user.subtype}" — 이미 알고 있으므로 챗봇이 다시 묻지 않습니다.`, 'ok');
+
+  user.cycleRule = stage2.eligibility_rules.filter(r=>r.condition.visa_subtype).find(r=>checkCondition(r));
+  if (info.group === 'cycle_degree' && info.degreeLevel){
+    trace(`<span class="file">[hard_caps_by_degree.${info.degreeLevel}]</span> 학위과정이므로 절대 상한 규칙도 적용 대상 — 세부 내용은 마지막 요약에서 안내`, 'ok');
+    user.hardCapDegree = info.degreeLevel;
+  } else {
+    trace(`<span class="file">[hard_caps_by_degree]</span> "${info.label}"(${user.subtype})은 학위과정 연장주기(cycle_degree)에 속하지 않으므로 학위별 절대 상한을 적용하지 않습니다.`, 'idle');
+  }
+  trace('<span class="file">[chatbot_flow_design.removed_axes]</span> institution_tier / gpa 축은 질문하지 않음(B안, 보수적 기본값) → institution_tier="일반대학" 규칙을 기본 적용, 세부 안내는 마지막 요약에서 서류 다음에 배치', 'ok');
+
+  askSchedule();
+}
+
+/* ── 마지막 요약(showSummary)에서 쓰는, "subtype만 알면 이미 정해지는" 참고정보 렌더러들.
+   질문 흐름 중간에 흩어져 있던 것을 여기로 모았습니다(2026-09-16, "처음부터 다 보여주니
+   정신없다" 피드백 반영). ── */
+function cycleHtml(){
+  const r = user.cycleRule;
+  if (!r) return '';
+  const parts = [];
+  if (r.cycle) parts.push(r.cycle);
+  if (r.max_total_stay) parts.push(`전체 상한: ${r.max_total_stay} / 1회 연장 상한: ${r.max_stay_per_grant}`);
+  if (r.explanation) parts.push('💬 ' + r.explanation);
+  if (r.example) parts.push('📎 ' + r.example);
+  return parts.join('<br>');
+}
+
+function hardCapHtml(){
+  if (!user.hardCapDegree) return '';
+  const cap = stage2.hard_caps_by_degree[user.hardCapDegree];
+  return `<div class="capbox"><b>⏳ 유학활동 종료자 등 체류기간 연장 특례 상한</b><br>
+    이건 "한 번에 몇 년 주는지"가 아니라, 연장을 아무리 반복해도 <b>입학일 기준</b>으로 최대 언제까지만 유학(D-2) 자격으로 체류할 수 있는지 정한 절대 한도예요.<br><br>
+    <b>${user.hardCapDegree}</b> 기준: 기본상한 ${cap.기본상한}<span style="color:var(--ink-soft);"> (${cap.예외})</span><br>
+    <span style="color:var(--ink-soft); font-size:.85rem;">${cap.example}</span></div>`;
+}
+
+function tierAdviceHtml(){
+  /* B안(보수적 기본값): 대학 등급/성적은 질문하지 않는다. 대신 일반대학 기준을 항상
+     기본으로 안내하고, 등급에 따라 달라지는 두 갈래(면제될 수도/더 제한될 수도 있음)를
+     "참고사항"으로 붙인다. 준비할 서류 바로 다음, 관할청 연락처 바로 앞에 배치해서
+     "전화로 확인해보세요"라는 말이 나오자마자 실제 번호를 볼 수 있게 했다(사용자 피드백,
+     2026-09-16 — 이전엔 번호도 없이 "전화로 확인해보라"고만 해서 어색했음). */
+  const rGeneral = stage2.eligibility_rules.find(r=>r.id==='tier_general');
+  const rTop = stage2.eligibility_rules.find(r=>r.id==='tier_top');
+  const rWeak = stage2.eligibility_rules.find(r=>r.id==='tier_weak');
+  return `<b>🎓 대학 등급별 참고사항</b><br>
+    기본(일반대학) 기준: 1회 연장 상한 ${rGeneral.max_stay_per_grant} — 위 서류 목록에 재정능력·체류지 입증서류가 이미 포함돼 있어요.<br><br>
+    💡 <b>우수인증대학·인증대학</b> 재학생(평균 C학점 이상)은 ${rTop.documents_waived.join(', ')}가 면제될 수 있어요.<br>
+    ⚠ 반대로 <b>비자심사강화대학</b> 학위과정 재학생으로 전체 평균 이수학점이 D학점 이하라면 1회 연장 상한이 ${rWeak.max_stay_per_grant}로 줄고, ${rWeak.note} — 심사가 더 까다로워질 수 있어요.<br><br>
+    본인 학교가 어느 등급에 해당하는지는 스스로 판단하기 어려울 수 있으니, 바로 아래 관할청 연락처로 전화해서 확인해보세요 ↓`;
+}
+
+function askSchedule(){
+  pushStep(askSchedule);
+  say('야간이나 주말 수업을 듣고 계신가요? (매 학기 바뀔 수 있어서 매번 여쭤봐요)');
+  addChoice('예', ()=>{ user.schedule='야간 또는 주말 수업 수강'; afterSchedule(false); });
+  addChoice('아니오', ()=>{ user.schedule='주간'; afterSchedule(false); });
+  addChoice('모르겠어요', ()=>{ user.schedule='모름'; afterSchedule(true); });
+  addBack();
+}
+
+function afterSchedule(unknown){
+  trace(`<span class="file">[사용자 응답 저장]</span> user.schedule = "${user.schedule}"`);
+  const r = stage2.eligibility_rules.find(r=>r.condition.class_schedule);
+  if (unknown){
+    trace('<span class="file">[chatbot_flow_design.axes.class_schedule.unknown_handling]</span> \'모르겠어요\' 선택 → \'해당 없음\'으로 조용히 넘기지 않고, 제한 규칙을 그대로 보여주며 확인을 권장(보수적 원칙: 문제 없다고 안내했는데 실제로 걸리는 경우가 더 위험함)', 'no');
+    say('⚠ ' + r.restriction);
+    say('❓ 본인 시간표가 야간·주말 수업에 해당하는지 다시 확인해보세요. 확실하지 않다면 해당될 수 있다고 가정하고 관할청에 문의하는 게 안전해요.');
+  } else if (checkCondition(r)){
+    say('⚠ ' + r.restriction + ` (예외: ${r.exception})`);
+  }
+  askStatus();
+}
+
+function askStatus(){
+  pushStep(askStatus);
+  say('현재 휴학 중이신가요? (이것도 학기마다 바뀔 수 있어 매번 확인해요)');
+  addChoice('예', ()=>{ user.status='휴학'; askLeaveReason(); });
+  addChoice('아니오, 재학 중', ()=>{ user.status='재학'; user.leaveReason=null; afterStatus(); });
+  addBack();
+}
+
+function askLeaveReason(){
+  /* 사용자 확인 결과 추가된 후속질문: 휴학 사유에 따라 적용되는 문구(제한 vs 예외)가 달라짐 */
+  pushStep(askLeaveReason);
+  trace(`<span class="file">[사용자 응답 저장]</span> user.status = "${user.status}"`);
+  say('휴학 사유가 무엇인가요?');
+  addChoice('질병·사고 등 부득이한 사유', ()=>{ user.leaveReason='질병·사고'; afterStatus(); });
+  addChoice('개인사정·학점미달', ()=>{ user.leaveReason='개인사정'; afterStatus(); });
+  addBack();
+}
+
+function afterStatus(){
+  if(user.leaveReason) trace(`<span class="file">[사용자 응답 저장]</span> user.leaveReason = "${user.leaveReason}"`);
+  const r = stage2.eligibility_rules.find(r=>r.condition.academic_status);
+  const restricted = checkCondition(r);
+  if (restricted){
+    say('⚠ ' + r.restriction);
+  } else if (user.status === '휴학' && user.leaveReason === '질병·사고'){
+    trace('<span class="file">[eligibility_rules.leave.exception]</span> leaveReason == "질병·사고" → 제한 규칙 대신 예외 문구 적용', 'ok');
+    say('✅ ' + r.exception + ' (예: 진단서 등 증빙서류 지참)');
+  }
+  confirmAddress();
+}
+
+/* ── 관할청 매칭: office_lookup.py와 동일한 로직을 그대로 옮겨왔습니다 ──
+   문제였던 것: "관할구역" 문자열에 "(김해시, 밀양시, 양산시 제외)"처럼 제외조건이 괄호로
+   섞여 있어서, 단순 포함검사(city in text)로는 제외 대상 도시가 오히려 잘못 걸린다. */
+function parseJurisdiction(text){
+  const excluded = [];
+  [...text.matchAll(/\(([^()]*)제외\)/g)].forEach(m=>{
+    m[1].split(/[,\s]+/).map(s=>s.trim()).filter(Boolean).forEach(t=>excluded.push(t));
+  });
+  const cleaned = text.replace(/\([^()]*\)/g, '');
+  const included = cleaned.split(',').map(s=>s.trim()).filter(Boolean);
+  return { included, excluded };
+}
+function naiveMatch(city, list){
+  return list.filter(o => o.관할구역.includes(city));
+}
+function correctMatch(city, list){
+  return list.filter(o => {
+    const { included, excluded } = parseJurisdiction(o.관할구역);
+    if (excluded.some(ex => city.includes(ex) || ex.includes(city))) return false;
+    return included.some(inc => city.includes(inc) || inc.includes(city));
+  });
+}
+
+function confirmAddress(){
+  /* 로그인 시 이미 등록된 주소가 있으므로, 지역을 처음부터 다시 고르게 하지 않고
+     "이 주소 맞나요?"만 확인합니다 — 대부분의 사용자는 버튼 하나만 누르면 끝납니다.
+     주소가 바뀐 소수의 사용자만 아래 광역→시/군/구 2단계 흐름으로 넘어갑니다. */
+  pushStep(confirmAddress);
+  say(`마지막으로 확인할게요. 등록하신 체류지 주소가 "${knownProfile.address}" 맞으신가요? (관할청 안내에 씁니다)`);
+  trace(`<span class="file">[회원 프로필 → 주소]</span> 로그인 시 저장된 주소가 있어 지역을 처음부터 고르게 하지 않고 확인만 받습니다.`, 'ok');
+  addChoice('네, 맞아요', ()=>{
+    const [province, ...rest] = knownProfile.address.split(' ');
+    matchAndShow(province, rest.join(' '));
+  });
+  addChoice('아니요, 주소가 바뀌었어요', ()=> askRegionThenSummary());
+  addBack();
+}
+
+function askRegionThenSummary(){
+  pushStep(askRegionThenSummary);
+  say('새 주소 기준으로 다시 확인할게요. 시/도를 골라주세요. (목록에 없는 지역이면 아래 입력창에 "시/도 시/군/구"를 직접 적어도 돼요 — 실제 서비스에서 전체 주소를 처리하는 방식을 그대로 재현한 겁니다)');
+  trace('<span class="file">[office_lookup.recommended_ui_selection_unit]</span> offices.json의 "지역" 필드(정부 데이터셋 내부 관리용 5개 클러스터)를 그대로 보여주지 않고, 회원가입 주소와 같은 단위인 실제 시/도로 물어봅니다.');
+  provinceOptions.forEach(p => addChoice(p.province, ()=>{
+    user.province = p.province;
+    if (p.cities.length) askCity(p);
+    else matchAndShow(p.province, p.province);
+  }));
+  addAddressInput('예: 전북특별자치도 남원시 (직접 입력)', (v)=>{
+    trace(`<span class="file">[직접 입력 모드 — 실제 서비스 시뮬레이션]</span> 버튼 16개는 데모 편의용 예시일 뿐, 전국 228개 시/군/구를 다 버튼으로 만들 수는 없습니다. 실제로는 이렇게 자유 입력(또는 주소 자동완성 API)으로 문자열을 받아 아래 matchAndShow()에 그대로 넘깁니다 — 매칭 로직은 버튼 목록에 있던 없던 동일하게 동작합니다.`);
+    const parts = v.split(/\s+/).filter(Boolean);
+    const province = parts[0] || v;
+    const city = parts.slice(1).join(' ') || province;
+    user.province = province; user.city = city;
+    matchAndShow(province, city);
+  });
+  addBack();
+}
+
+function askCity(p){
+  pushStep(()=>askCity(p));
+  say(`"${p.province}" 이시군요. 시/군/구를 골라주세요(데모에서는 예시 몇 곳만 버튼으로 제공 — 없는 지역은 아래에 직접 입력하세요).`);
+  p.cities.forEach(c => addChoice(c, ()=>{ user.city=c; matchAndShow(p.province, c); }));
+  addAddressInput(`예: ${p.province} 소속의 다른 시/군/구`, (v)=>{
+    trace(`<span class="file">[직접 입력 모드 — 실제 서비스 시뮬레이션]</span> "${p.province}"는 예시 버튼 ${p.cities.length}개만 데모에 넣어뒀을 뿐입니다. 목록에 없는 시/군/구를 직접 입력해도 matchAndShow()가 동일한 로직으로 처리합니다.`);
+    user.city = v;
+    matchAndShow(p.province, v);
+  });
+  addBack();
+}
+
+/* 실사용 중 발견된 버그(2026-09-16, 사용자 리포트): "강원특별자치도"로 검색하면 양주출입국·
+   외국인사무소가 후보에서 통째로 빠진다 — 양주 레코드의 관할구역 텍스트는 "강원도 철원군"처럼
+   구(舊) 명칭을 쓰는데, 다른 레코드(춘천 등)는 전부 "강원특별자치도"라는 신(新) 명칭을 쓰기
+   때문에 문자열이 정확히 일치하지 않아서다. 그 결과 후보가 춘천 계열 4곳으로만 좁혀지고,
+   춘천이 철원군을 명시적으로 "제외"하고 있어서 안전장치가 발동해 "매칭 실패"로 잘못 끝났다.
+   이건 office_lookup.py가 이미 경고해뒀던 "행정구역 명칭 개편으로 문자열이 달라질 수 있다"는
+   바로 그 위험이 실제로 발생한 사례다. 고쳐야 할 지점은 1단계(광역 후보 좁히기)이지 2단계
+   (제외조건 매칭)가 아니다 — 후보군 자체가 잘못 좁혀졌던 것. "도/특별자치도/광역시/특별시"
+   같은 접미사를 떼고 핵심 지명("강원")만으로 후보를 찾도록 고쳐서, 신·구 명칭이 섞여 있어도
+   같은 지역으로 인식하게 했다. */
+function provinceRoot(p){
+  return p.replace(/(특별자치도|특별자치시|광역시|특별시|도)$/, '');
+}
+
+function matchAndShow(province, city){
+  trace(`<span class="file">[매칭 시작]</span> province="${province}", city="${city}"`);
+
+  const naive = naiveMatch(city, offices.data);
+  trace(`<span class="file">[예전 방식] city in 관할구역 단순 포함검사</span> "${city}" 글자가 어디든 들어있으면 매칭<br>` +
+        `&nbsp;&nbsp;⇒ 결과: [${naive.map(o=>o.기관명).join(', ') || '없음'}]`);
+
+  const root = provinceRoot(province);
+  const candidates = offices.data.filter(o => o.관할구역.includes(root) || o.주소.includes(root));
+  trace(`<span class="file">[1단계: 광역 후보 좁히기 (접미사 제거 후 "${root}"로 검색 — 신/구 행정구역명 혼용 대응)]</span> "${province}" 관련 사무소 ${candidates.length}곳으로 후보 축소: [${candidates.map(o=>o.기관명).join(', ')}]`);
+
+  let exact = correctMatch(city, candidates);
+  let stepLabel = '2단계: 제외조건 반영한 정밀 매칭 (office_lookup.py: find_offices)';
+  let traceKind = 'ok';
+  if (!exact.length){
+    // 안전장치: 후보 중 누군가 이 도시를 "명시적으로 제외"했다면, 그 도시를 실제로
+    // 담당하는 사무소가 후보 밖에 있다는 뜻 — 엉뚱한 본청으로 잘못 귀속시키지 않는다.
+    const excludedElsewhere = candidates.some(o => {
+      const { excluded } = parseJurisdiction(o.관할구역);
+      return excluded.some(ex => city.includes(ex) || ex.includes(city));
+    });
+    if (excludedElsewhere){
+      stepLabel = '안전장치 작동: 후보 중 한 곳이 "' + city + '"을(를) 명시적으로 제외 → 실제 담당 사무소가 이 후보 밖에 있을 가능성이 높아 자동 귀속을 포기';
+      traceKind = 'no';
+    } else {
+      // province(전체 명칭) 또는 root(접미사 뗀 핵심 지명) 둘 중 하나라도 "(...제외)" 바로 앞에
+      // 붙어 있으면 매칭 — 레코드마다 신/구 명칭을 다르게 썼을 가능성까지 대비(위 버그와 동일 원인).
+      const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp('(' + esc(province) + '|' + esc(root) + ')\\([^()]*제외\\)');
+      exact = candidates.filter(o => re.test(o.관할구역));
+      stepLabel = '2단계에서 직접 매칭 없음 → fallback: "' + province + '(...제외)" 사무소로 자동 귀속 (find_offices_two_step)';
+    }
+  }
+  trace(`<span class="file">[${stepLabel}]</span><br>&nbsp;&nbsp;⇒ <span class="${exact.length?'ok':'no'}">결과: [${exact.map(o=>o.기관명).join(', ') || '없음 — 관할청 자동 확인 실패'}]</span>`, exact.length?'ok':traceKind);
+
+  if (naive.length && JSON.stringify(naive.map(o=>o.기관명).sort()) !== JSON.stringify(exact.map(o=>o.기관명).sort())){
+    trace(`<span class="file">[차이 발견]</span> 단순 포함검사였다면 "${naive.map(o=>o.기관명).join(', ')}"이(가) 잘못 포함/누락됐을 것입니다 — "(...제외)" 조건을 반영한 결과만 정답입니다.`, 'no');
+  }
+
+  user.officeMatches = exact;
+  showSummary();
+}
+
+function renderDoc(d){
+  let html = `<div class="doc-item"><b>${d.name}</b>`;
+  if (d.examples){
+    html += `<div class="ex">예시: ${d.examples.join(', ')}</div>`;
+  }
+  if (d.obtain_by_example){
+    html += '<div class="ex">발급 경로(예시별):<br>' +
+      Object.entries(d.obtain_by_example).map(([ex,how]) => `&nbsp;&nbsp;• <b>${ex}</b>: ${how}`).join('<br>') +
+      '</div>';
+  } else if (d.how_to_obtain){
+    html += `<div class="ex">발급 경로: ${d.how_to_obtain}</div>`;
+  }
+  if (d.fallback) html += `<div class="ex">${d.fallback}</div>`;
+  if (d.note) html += `<div class="ex"><i>${d.note}</i></div>`;
+  if (d.validity) html += `<div class="ex">유효기간: ${d.validity}</div>`;
+  html += '</div>';
+  return html;
+}
+
+function showSummary(){
+  const matches = user.officeMatches || [];
+  const info = subtypeInfo(user.subtype);
+  const chips = subtypeCatalog.map(s =>
+    `<span class="subtype-chip${s.code===user.subtype?' current':''}">${s.code}<br>${s.label}</span>`
+  ).join('');
+  const docsHtml = stage2.required_documents.map(renderDoc).join('');
+  const officeHtml = matches.length
+    ? matches.map(o=>`${o.기관명}<br>${o.주소}<br>☎ ${o.전화}`).join('<br><br>')
+    : '해당 지역 매칭 실패 — 하이코리아 대표번호(1345) 또는 가까운 출입국·외국인청에 직접 확인 필요';
+
+  /* 순서: (1) 세부유형·연장주기·상한 → (2) 준비할 서류 → (3) 대학등급 참고사항(관할청 전화로
+     확인 유도) → (4) 관할청 연락처(바로 위 안내에 이어서 실제 번호 제공) → (5) 전체 절차.
+     "참고사항은 서류 다음에, 전화하라는 말 옆에 번호가 있어야 한다"는 피드백 반영(2026-09-16). */
+  const html = `<b>정리해드릴게요</b><br><br>
+  🪪 세부유형: <b>${user.subtype}</b> · ${info.label} (8종 중 하나 — 묶지 않고 개별 표시)<div class="subtype-grid">${chips}</div><br>
+  📆 연장 주기·상한<br>${cycleHtml()}<br>
+  ${hardCapHtml()}<br>
+  📋 준비할 서류 · 예시 · 받는 방법 (총 ${stage2.required_documents.length}종)<br>${docsHtml}<br>
+  ${tierAdviceHtml()}<br><br>
+  🏢 문의/방문할 관할청 (${matches.length}곳)<br>${officeHtml}<br><br>
+  📅 전체 절차 (process_overview_easylaw.json)<br>${processOverview.steps.join('<br>')}`;
+  sayHTML(html);
+  clearChoices();
+  addBack();
+  addRestart();
+}
+
+start();
+</script>
+</body>
+</html>
