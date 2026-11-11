@@ -95,6 +95,8 @@ PDF에서 텍스트만 뽑는 게 아니라, **원문의 레이아웃 좌표를 
   자체가 없었던 구조적 공백을 D-2와 통합해 해소, E-9 "재고용확인서" 질문에서 '아니오' 응답이
   자격 게이트처럼 처리돼 폴백으로 잘못 빠지던 라우팅 버그 수정, 수수료는 실제 금액을 화면에
   노출하지 않기로 정책 확정 등.
+- `visa_chatbot_combined.html` (최종본, Pages 첫 화면): D-2·E-9를 하나로 합친 챗봇. 마지막
+  "정리해드릴게요" 단계에서 서류·관할기관 등 결과를 항목별 토글(펼침/접힘)로 보여주도록 UI 개선.
 - `d2_chatbot_demo_2.html`: 위 로직을 실제 체험할 수 있는 단일 HTML 데모. 라이트/다크 모드
   대응, 대화창과 함께 내부 로직 추적(trace) 패널을 보여줘 "왜 이 질문을, 왜 이 서류가 나왔는지"를
   바로 확인할 수 있게 설계.
@@ -121,7 +123,8 @@ PDF에서 텍스트만 뽑는 게 아니라, **원문의 레이아웃 좌표를 
 │   └── 전국_시군구_관할청_매핑_228개.csv
 ├── chatbot/                # ④ 챗봇 로직 / 데모
 │   ├── visa_extension_chatbot_final.json
-│   └── d2_chatbot_demo_2.html
+│   ├── visa_chatbot_combined.html   # 최종 챗봇(D-2·E-9 통합, 토글 UI)
+│   └── d2_chatbot_demo_2.html       # 내부 로직 추적 패널이 있는 D-2 데모
 └── data/                   # 단계별 산출물(JSON/DB)
     ├── D2_stay_extension_stage1.json
     ├── D2_stay_extension_stage2.json
@@ -147,8 +150,7 @@ pip install -r requirements.txt
   보존되지 않았습니다. 따라서 이 스크립트는 그대로는 재실행되지 않으며, 산출물인
   `data/D2_stay_extension_stage2.json`만 저장소에 포함되어 있습니다.
 - `processing/build_sqlite.py`는 저장소에 있는 파일만으로 `data/d2_chatbot.db`를 다시 만들 수 있습니다.
-- 데모 `chatbot/d2_chatbot_demo_2.html`은 데이터가 파일 안에 내장된 단일 HTML이라, 브라우저로 바로
-  열면 됩니다.
+- `chatbot/`의 HTML 파일들은 데이터가 파일 안에 내장된 단일 HTML이라, 브라우저로 바로 열면 됩니다.
 
 ## 한계 / 다음 단계
 
