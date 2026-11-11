@@ -31,7 +31,7 @@ import json
 import sqlite3
 import os
 
-BASE = os.path.dirname(os.path.abspath(__file__))
+BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data')
 STAGE2 = f'{BASE}/D2_stay_extension_stage2.json'
 DB_PATH = f'{BASE}/d2_chatbot.db'
 

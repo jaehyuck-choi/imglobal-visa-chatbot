@@ -18,13 +18,13 @@ import datetime
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'regions'))
 from office_lookup import find_offices_two_step  # noqa: E402
 from full_region_list import REGIONS  # noqa: E402
 
 BASE = '../data'
 STAGE1 = f'{BASE}/D2_stay_extension_stage1.json'
-PROCESS = '../data/process_overview_easylaw.json'  # NOTE: 원래 Claude 작업세션의 임시 스크래치 파일로, 현재 저장소에는 포함되어 있지 않음 (재현 시 별도 준비 필요)
+PROCESS = '../data/process_overview_easylaw.json'  # NOTE: 작업 당시 임시 파일로만 존재해 현재 저장소에는 포함되어 있지 않음 (재현 시 별도 준비 필요)
 OFFICES = '../regions/immigration_offices.json'
 OUT = f'{BASE}/D2_stay_extension_stage2.json'
 

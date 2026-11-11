@@ -23,7 +23,7 @@ import json
 import re
 import datetime
 
-# extract_d2_stay_extension.py의 헬퍼(find_chapter_page_range, get_label_runs, body_words,
+# D2.py의 헬퍼(find_chapter_page_range, get_label_runs, body_words,
 # group_lines, classify, build_tree, nodes_to_json)를 그대로 재사용
 import os as _os
 _spec = importlib.util.spec_from_file_location(

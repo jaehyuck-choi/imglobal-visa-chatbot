@@ -6,6 +6,7 @@
 > 저장소입니다. 팀의 다른 파트(금융 특화 번역모델, 블록체인 신뢰 계층 설계)는 이 저장소의
 > 범위 밖이며, 아래 "전체 서비스에서 이 저장소의 위치" 절에서 맥락만 간단히 설명합니다.
 
+- 챗봇 파트 단독 데모(이 저장소, GitHub Pages): https://jaehyuck-choi.github.io/imglobal-visa-chatbot/
 - 배포 데모(팀 서비스 전체): https://imglobal.vercel.app/
 - 시연 영상: https://youtu.be/fduzuZpGduY
 - 결과: 수상하지 못함 — 이 저장소는 결과보다 **문제를 푼 방식과 디버깅 과정**을 보여주는 데
@@ -103,6 +104,8 @@ PDF에서 텍스트만 뽑는 게 아니라, **원문의 레이아웃 좌표를 
 ```
 .
 ├── README.md
+├── requirements.txt
+├── index.html             # GitHub Pages 진입점 (데모로 이동)
 ├── extraction/            # ① PDF 구조화 추출
 │   ├── D2.py
 │   └── extract_e9_stay_extension.py
@@ -128,6 +131,24 @@ PDF에서 텍스트만 뽑는 게 아니라, **원문의 레이아웃 좌표를 
     ├── e-9_processed.json
     └── d2_chatbot.db
 ```
+
+## 실행 방법
+
+```bash
+pip install -r requirements.txt
+```
+
+- 각 스크립트는 입출력 경로를 `../data/` 같은 상대경로로 쓰므로, **스크립트가 있는 폴더로 이동한 뒤
+  실행**합니다 (예: `cd extraction && python D2.py`).
+- `extraction/*.py`는 원본 PDF(`docs/260901_체류민원_자격별_안내_매뉴얼.pdf`)가 있어야 실행됩니다.
+  원본 PDF는 저작권 문제로 포함하지 않았으므로, 법무부에서 같은 이름으로 받아 `docs/`에 두면 됩니다.
+- `processing/build_stage2.py`는 `data/process_overview_easylaw.json`(easylaw.go.kr의
+  체류기간연장허가 공통 절차 정리본)을 입력으로 쓰는데, 이 파일은 작업 당시 임시 파일로만 존재해
+  보존되지 않았습니다. 따라서 이 스크립트는 그대로는 재실행되지 않으며, 산출물인
+  `data/D2_stay_extension_stage2.json`만 저장소에 포함되어 있습니다.
+- `processing/build_sqlite.py`는 저장소에 있는 파일만으로 `data/d2_chatbot.db`를 다시 만들 수 있습니다.
+- 데모 `chatbot/d2_chatbot_demo_2.html`은 데이터가 파일 안에 내장된 단일 HTML이라, 브라우저로 바로
+  열면 됩니다.
 
 ## 한계 / 다음 단계
 

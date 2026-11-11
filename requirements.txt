@@ -1,0 +1,3 @@
+pdfplumber
+pypdf
+jupysql  # processing/view_d2_db.ipynb 에서만 사용
