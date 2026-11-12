@@ -6,11 +6,10 @@
 > 저장소입니다. 팀의 다른 파트(금융 특화 번역모델, 블록체인 신뢰 계층 설계)는 이 저장소의
 > 범위 밖이며, 아래 "전체 서비스에서 이 저장소의 위치" 절에서 맥락만 간단히 설명합니다.
 
-- 챗봇 파트 단독 데모(이 저장소, GitHub Pages): https://jaehyuck-choi.github.io/imglobal-visa-chatbot/
-- 배포 데모(팀 서비스 전체): https://imglobal.vercel.app/
-- 시연 영상: https://youtu.be/fduzuZpGduY
-- 결과: 수상하지 못함 — 이 저장소는 결과보다 **문제를 푼 방식과 디버깅 과정**을 보여주는 데
-  목적이 있습니다.
+- **챗봇 데모:** [브라우저에서 바로 실행](https://jaehyuck-choi.github.io/imglobal-visa-chatbot/)
+- **팀 서비스 데모:** [imglobal.vercel.app](https://imglobal.vercel.app/) · **시연 영상:** [YouTube](https://youtu.be/fduzuZpGduY)
+
+**내 기여:** 공식 자료 구조화와 지역·관할청 매핑부터 E-9·D-2 조건별 대화 흐름, 챗봇 파트 웹 데모까지 설계·구현했습니다. 팀의 번역모델과 블록체인 파트는 이 저장소 범위에 포함되지 않습니다.
 
 ## 출발점 — 사용자 관점
 
@@ -65,6 +64,9 @@ extract_e9_stay_            → *_stage2.json              build_offices_json.py
 원본 출처: 법무부 「체류민원 자격별 안내 매뉴얼」(2026.09.01 기준), 공공데이터포털
 「법무부_출입국 관리사무소 현황」(data.go.kr 15040715). *저작권 문제를 피하기 위해 원본 PDF/CSV
 전체는 이 저장소에 올리지 않고, 직접 구조화·가공한 JSON/CSV 산출물만 포함합니다.*
+
+<details>
+<summary>구현 상세: 문서 구조화부터 챗봇 대화 흐름까지</summary>
 
 ## ① PDF 구조화 추출 — `D2.py`, `extract_e9_stay_extension.py`
 
@@ -130,6 +132,8 @@ PDF에서 텍스트만 뽑는 게 아니라, **원문의 레이아웃 좌표를 
 - `d2_chatbot_demo_2.html`: 위 로직을 실제 체험할 수 있는 단일 HTML 데모. 라이트/다크 모드
   대응, 대화창과 함께 내부 로직 추적(trace) 패널을 보여줘 "왜 이 질문을, 왜 이 서류가 나왔는지"를
   바로 확인할 수 있게 설계.
+
+</details>
 
 ## 폴더 구조
 
