@@ -1,15 +1,12 @@
-# iM Global — 외국인 체류기간 연장 안내 챗봇
+# iM Global · 체류기간 연장 안내 챗봇
 
-> **2026 AI Blockchain Challenge in Daegu** 출품작 "iM Global — 외국인 고객을 위한 금융 특화
-> 번역·체류 안내 플랫폼"(과제명 **TCB: Translation·Chatbot·Blockchain**, 팀 **아이엠그라운드**)
-> 중, **제가(최재혁, 통계학과) 직접 설계·개발한 "체류기간 연장 안내 챗봇" 파트**를 정리한
-> 저장소입니다. 팀의 다른 파트(금융 특화 번역모델, 블록체인 신뢰 계층 설계)는 이 저장소의
-> 범위 밖이며, 아래 "전체 서비스에서 이 저장소의 위치" 절에서 맥락만 간단히 설명합니다.
+iM Global은 2026 AI Blockchain Challenge in Daegu에 낸 팀 프로젝트입니다(팀 아이엠그라운드, 과제명 TCB: Translation · Chatbot · Blockchain). 외국인 은행 고객을 위해 금융 번역, 체류 연장 안내, 블록체인 신뢰 계층을 하나의 플랫폼으로 묶었습니다.
 
-- **챗봇 데모:** [브라우저에서 바로 실행](https://jaehyuck-choi.github.io/imglobal-visa-chatbot/)
-- **팀 서비스 데모:** [imglobal.vercel.app](https://imglobal.vercel.app/) · **시연 영상:** [YouTube](https://youtu.be/fduzuZpGduY)
+이 저장소는 그중 제가(최재혁, 통계학과) 맡은 **체류 연장 안내 챗봇** 부분입니다. 공식 규정 PDF를 구조화하는 일부터 지역별 관할청 매핑, E-9·D-2 조건별 대화 흐름, 웹 데모까지 혼자 설계하고 만들었습니다. 번역 모델과 블록체인 부분은 다른 팀원이 맡아서 이 저장소에는 없습니다.
 
-**내 기여:** 공식 자료 구조화와 지역·관할청 매핑부터 E-9·D-2 조건별 대화 흐름, 챗봇 파트 웹 데모까지 설계·구현했습니다. 팀의 번역모델과 블록체인 파트는 이 저장소 범위에 포함되지 않습니다.
+- 챗봇 데모: [브라우저에서 바로 실행](https://jaehyuck-choi.github.io/imglobal-visa-chatbot/)
+- 팀 서비스 데모: [imglobal.vercel.app](https://imglobal.vercel.app/)
+- 시연 영상: [YouTube](https://youtu.be/fduzuZpGduY)
 
 ## 출발점 — 사용자 관점
 
